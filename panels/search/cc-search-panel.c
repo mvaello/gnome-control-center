@@ -544,6 +544,58 @@ drag_leave (GtkWidget *widget,
 }
 
 static void
+swap_rows (GtkWidget *source,
+           GtkWidget *target)
+{
+  GtkWidget *source_parent;
+  GtkWidget *target_parent;
+  int index;
+
+  index = gtk_list_box_row_get_index (GTK_LIST_BOX_ROW (target));
+
+  source_parent = gtk_widget_get_parent (source);
+  target_parent = gtk_widget_get_parent (target);
+
+  g_object_ref (source);
+  gtk_container_remove (GTK_CONTAINER (source_parent), source);
+  gtk_list_box_insert (GTK_LIST_BOX (target_parent), source, index);
+  g_object_unref (source);
+
+  gtk_list_box_select_row (GTK_LIST_BOX (target_parent), GTK_LIST_BOX_ROW (source));
+  gtk_widget_grab_focus (source);
+}
+
+static gboolean
+drag_key_press (GtkListBoxRow *row,
+                GdkEventKey   *event,
+                CcSearchPanel *self)
+{
+  GtkWidget *target;
+  guint index;
+
+  index = gtk_list_box_row_get_index (row);
+
+  if ((event->state & GDK_MOD1_MASK) != 0 && event->keyval == GDK_KEY_Up)
+    index--;
+  else if ((event->state & GDK_MOD1_MASK) != 0 && event->keyval == GDK_KEY_Down)
+    index++;
+  else
+    return GDK_EVENT_PROPAGATE;
+
+  target = GTK_WIDGET (gtk_list_box_get_row_at_index (GTK_LIST_BOX (self->priv->list_box), index));
+  if (target) {
+    gtk_list_box_set_sort_func (GTK_LIST_BOX (self->priv->list_box), NULL, NULL, NULL);
+
+    swap_rows (GTK_WIDGET (row), target);
+
+    gtk_container_foreach (GTK_CONTAINER (self->priv->list_box), update_row_position, self);
+    search_panel_propagate_sort_order (self);
+  }
+
+  return GDK_EVENT_STOP;
+}
+
+static void
 search_panel_add_one_app_info (CcSearchPanel *self,
                                GAppInfo *app_info,
                                gboolean default_enabled)
@@ -570,6 +622,7 @@ search_panel_add_one_app_info (CcSearchPanel *self,
                           g_object_ref (app_info), g_object_unref);
   g_object_set_data (G_OBJECT (row), "self", self);
   gtk_container_add (GTK_CONTAINER (self->priv->list_box), row);
+  g_signal_connect (row, "key-press-event", G_CALLBACK (drag_key_press), self);
 
   /* Drag and Drop */
   handle = gtk_event_box_new ();
