@@ -33,6 +33,16 @@
 #include "ce-page-ethernet.h"
 #include "ce-page-8021x-security.h"
 
+struct _CEPage8021xSecurity {
+        CEPage parent_instance;
+
+        GtkSwitch *enabled;
+        GtkWidget *security_widget;
+        WirelessSecurity *security;
+        GtkSizeGroup *group;
+        gboolean initial_have_8021x;
+};
+
 G_DEFINE_TYPE (CEPage8021xSecurity, ce_page_8021x_security, CE_TYPE_PAGE)
 
 static void
@@ -60,12 +70,12 @@ finish_setup (CEPage8021xSecurity *page, gpointer unused, GError *error, gpointe
 	if (error)
 		return;
 
-        vbox = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "vbox"));
-        heading = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "heading_sec"));
+        vbox = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "vbox"));
+        heading = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "heading_sec"));
 
         page->group = gtk_size_group_new (GTK_SIZE_GROUP_HORIZONTAL);
 
-	page->security = (WirelessSecurity *) ws_wpa_eap_new (CE_PAGE (page)->connection, TRUE, FALSE);
+	page->security = (WirelessSecurity *) ws_wpa_eap_new (ce_page_get_connection (CE_PAGE (page)), TRUE, FALSE);
 	if (!page->security) {
 		g_warning ("Could not load 802.1x user interface.");
 		return;
@@ -103,12 +113,12 @@ ce_page_8021x_security_new (NMConnection     *connection,
 	if (nm_connection_get_setting_802_1x (connection))
 		page->initial_have_8021x = TRUE;
 
-	page->enabled = GTK_SWITCH (gtk_builder_get_object (CE_PAGE (page)->builder, "8021x_switch"));
+	page->enabled = GTK_SWITCH (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "8021x_switch"));
 
 	g_signal_connect (page, "initialized", G_CALLBACK (finish_setup), NULL);
 
 	if (page->initial_have_8021x)
-                CE_PAGE (page)->security_setting = NM_SETTING_802_1X_SETTING_NAME;
+                ce_page_set_security_setting (CE_PAGE (page), NM_SETTING_802_1X_SETTING_NAME);
 
 	return CE_PAGE (page);
 }

@@ -23,43 +23,14 @@
 #define __CE_PAGE_IP6_H
 
 #include <glib-object.h>
+#include <NetworkManager.h>
 
-#include <gtk/gtk.h>
 #include "ce-page.h"
 
 G_BEGIN_DECLS
 
-#define CE_TYPE_PAGE_IP6          (ce_page_ip6_get_type ())
-#define CE_PAGE_IP6(o)            (G_TYPE_CHECK_INSTANCE_CAST ((o), CE_TYPE_PAGE_IP6, CEPageIP6))
-#define CE_PAGE_IP6_CLASS(k)      (G_TYPE_CHECK_CLASS_CAST((k), CE_TYPE_PAGE_IP6, CEPageIP6Class))
-#define CE_IS_PAGE_IP6(o)         (G_TYPE_CHECK_INSTANCE_TYPE ((o), CE_TYPE_PAGE_IP6))
-#define CE_IS_PAGE_IP6_CLASS(k)   (G_TYPE_CHECK_CLASS_TYPE ((k), CE_TYPE_PAGE_IP6))
-#define CE_PAGE_IP6_GET_CLASS(o)  (G_TYPE_INSTANCE_GET_CLASS ((o), CE_TYPE_PAGE_IP6, CEPageIP6Class))
-
-typedef struct _CEPageIP6          CEPageIP6;
-typedef struct _CEPageIP6Class     CEPageIP6Class;
-
-struct _CEPageIP6
-{
-        CEPage parent;
-
-        NMSettingIPConfig *setting;
-
-        GtkToggleButton *disabled;
-        GtkWidget       *address_list;
-        GtkSwitch       *auto_dns;
-        GtkWidget       *dns_entry;
-        GtkSwitch       *auto_routes;
-        GtkWidget       *routes_list;
-        GtkWidget       *never_default;
-};
-
-struct _CEPageIP6Class
-{
-        CEPageClass parent_class;
-};
-
-GType   ce_page_ip6_get_type (void);
+#define CE_TYPE_PAGE_IP6 (ce_page_ip6_get_type ())
+G_DECLARE_FINAL_TYPE (CEPageIP6, ce_page_ip6, CE, PAGE_IP6, CEPage)
 
 CEPage *ce_page_ip6_new      (NMConnection     *connection,
                               NMClient         *client);

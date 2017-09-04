@@ -18,9 +18,6 @@
 
 #include <gdk/gdk.h>
 
-G_DEFINE_TYPE_WITH_CODE (FooScrollArea, foo_scroll_area, GTK_TYPE_CONTAINER,
-                         G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL));
-
 static GtkWidgetClass *parent_class;
 
 typedef struct BackingStore BackingStore;
@@ -63,8 +60,10 @@ struct AutoScrollInfo
   GTimer                     *timer;
 };
 
-struct FooScrollAreaPrivate
+struct _FooScrollArea
 {
+  GtkContainer                parent_instance;
+
   GdkWindow                  *input_window;
 
   int                         width;
@@ -98,6 +97,9 @@ struct FooScrollAreaPrivate
   cairo_surface_t            *surface;
   cairo_region_t             *update_region; /* In canvas coordinates */
 };
+
+G_DEFINE_TYPE_WITH_CODE (FooScrollArea, foo_scroll_area, GTK_TYPE_CONTAINER,
+                         G_IMPLEMENT_INTERFACE (GTK_TYPE_SCROLLABLE, NULL));
 
 enum
   {
@@ -149,8 +151,8 @@ foo_scroll_area_map (GtkWidget *widget)
 
   GTK_WIDGET_CLASS (parent_class)->map (widget);
 
-  if (area->priv->input_window)
-    gdk_window_show (area->priv->input_window);
+  if (area->input_window)
+    gdk_window_show (area->input_window);
 }
 
 static void
@@ -158,8 +160,8 @@ foo_scroll_area_unmap (GtkWidget *widget)
 {
   FooScrollArea *area = FOO_SCROLL_AREA (widget);
 
-  if (area->priv->input_window)
-    gdk_window_hide (area->priv->input_window);
+  if (area->input_window)
+    gdk_window_hide (area->input_window);
 
   GTK_WIDGET_CLASS (parent_class)->unmap (widget);
 }
@@ -169,12 +171,12 @@ foo_scroll_area_finalize (GObject *object)
 {
   FooScrollArea *scroll_area = FOO_SCROLL_AREA (object);
 
-  g_object_unref (scroll_area->priv->hadj);
-  g_object_unref (scroll_area->priv->vadj);
+  g_object_unref (scroll_area->hadj);
+  g_object_unref (scroll_area->vadj);
 
-  g_ptr_array_free (scroll_area->priv->input_regions, TRUE);
+  g_ptr_array_free (scroll_area->input_regions, TRUE);
 
-  g_free (scroll_area->priv);
+  g_free (scroll_area);
 
   G_OBJECT_CLASS (foo_scroll_area_parent_class)->finalize (object);
 }
@@ -190,16 +192,16 @@ foo_scroll_area_get_property (GObject    *object,
   switch (property_id)
     {
     case PROP_VADJUSTMENT:
-      g_value_set_object (value, &scroll_area->priv->vadj);
+      g_value_set_object (value, &scroll_area->vadj);
       break;
     case PROP_HADJUSTMENT:
-      g_value_set_object (value, &scroll_area->priv->hadj);
+      g_value_set_object (value, &scroll_area->hadj);
       break;
     case PROP_HSCROLL_POLICY:
-      g_value_set_enum (value, scroll_area->priv->hscroll_policy);
+      g_value_set_enum (value, scroll_area->hscroll_policy);
       break;
     case PROP_VSCROLL_POLICY:
-      g_value_set_enum (value, scroll_area->priv->vscroll_policy);
+      g_value_set_enum (value, scroll_area->vscroll_policy);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -222,10 +224,10 @@ foo_scroll_area_set_property (GObject      *object,
     foo_scroll_area_set_hadjustment (FOO_SCROLL_AREA (object), g_value_get_object (value));
     break;
   case PROP_HSCROLL_POLICY:
-    scroll_area->priv->hscroll_policy = g_value_get_enum (value);
+    scroll_area->hscroll_policy = g_value_get_enum (value);
     break;
   case PROP_VSCROLL_POLICY:
-    scroll_area->priv->vscroll_policy = g_value_get_enum (value);
+    scroll_area->vscroll_policy = g_value_get_enum (value);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -266,8 +268,7 @@ foo_scroll_area_class_init (FooScrollAreaClass *class)
     g_signal_new ("viewport_changed",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
-                  G_STRUCT_OFFSET (FooScrollAreaClass,
-                                   viewport_changed),
+                  0,
                   NULL, NULL,
                   g_cclosure_marshal_generic,
                   G_TYPE_NONE, 2,
@@ -278,8 +279,7 @@ foo_scroll_area_class_init (FooScrollAreaClass *class)
     g_signal_new ("paint",
                   G_OBJECT_CLASS_TYPE (object_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
-                  G_STRUCT_OFFSET (FooScrollAreaClass,
-                                   paint),
+                  0,
                   NULL, NULL,
                   g_cclosure_marshal_generic,
                   G_TYPE_NONE, 1,
@@ -302,19 +302,18 @@ foo_scroll_area_init (FooScrollArea *scroll_area)
   gtk_widget_set_has_window (widget, FALSE);
   gtk_widget_set_redraw_on_allocate (widget, FALSE);
 
-  scroll_area->priv = g_new0 (FooScrollAreaPrivate, 1);
-  scroll_area->priv->width = 0;
-  scroll_area->priv->height = 0;
-  scroll_area->priv->hadj = g_object_ref_sink (new_adjustment());
-  scroll_area->priv->vadj = g_object_ref_sink (new_adjustment());
-  scroll_area->priv->x_offset = 0.0;
-  scroll_area->priv->y_offset = 0.0;
-  scroll_area->priv->min_width = 0;
-  scroll_area->priv->min_height = 0;
-  scroll_area->priv->auto_scroll_info = NULL;
-  scroll_area->priv->input_regions = g_ptr_array_new ();
-  scroll_area->priv->surface = NULL;
-  scroll_area->priv->update_region = cairo_region_create ();
+  scroll_area->width = 0;
+  scroll_area->height = 0;
+  scroll_area->hadj = g_object_ref_sink (new_adjustment());
+  scroll_area->vadj = g_object_ref_sink (new_adjustment());
+  scroll_area->x_offset = 0.0;
+  scroll_area->y_offset = 0.0;
+  scroll_area->min_width = 0;
+  scroll_area->min_height = 0;
+  scroll_area->auto_scroll_info = NULL;
+  scroll_area->input_regions = g_ptr_array_new ();
+  scroll_area->surface = NULL;
+  scroll_area->update_region = cairo_region_create ();
 }
 
 typedef struct
@@ -351,8 +350,8 @@ get_viewport (FooScrollArea *scroll_area,
 
   gtk_widget_get_allocation (widget, &allocation);
 
-  viewport->x = scroll_area->priv->x_offset;
-  viewport->y = scroll_area->priv->y_offset;
+  viewport->x = scroll_area->x_offset;
+  viewport->y = scroll_area->y_offset;
   viewport->width = allocation.width;
   viewport->height = allocation.height;
 }
@@ -362,8 +361,8 @@ allocation_to_canvas (FooScrollArea *area,
                       int           *x,
                       int           *y)
 {
-  *x += area->priv->x_offset;
-  *y += area->priv->y_offset;
+  *x += area->x_offset;
+  *y += area->y_offset;
 }
 
 static void
@@ -382,16 +381,16 @@ clear_exposed_input_region (FooScrollArea  *area,
   viewport = cairo_region_create_rectangle (&allocation);
   cairo_region_subtract (viewport, exposed);
 
-  for (i = 0; i < area->priv->input_regions->len; ++i)
+  for (i = 0; i < area->input_regions->len; ++i)
     {
-      InputRegion *region = area->priv->input_regions->pdata[i];
+      InputRegion *region = area->input_regions->pdata[i];
 
       cairo_region_intersect (region->region, viewport);
 
       if (cairo_region_is_empty (region->region))
         {
           input_region_free (region);
-          g_ptr_array_remove_index_fast (area->priv->input_regions, i--);
+          g_ptr_array_remove_index_fast (area->input_regions, i--);
         }
     }
 
@@ -449,27 +448,27 @@ foo_scroll_area_draw (GtkWidget *widget,
    */
 
   /* Setup input areas */
-  clear_exposed_input_region (scroll_area, scroll_area->priv->update_region);
+  clear_exposed_input_region (scroll_area, scroll_area->update_region);
 
-  scroll_area->priv->current_input = g_new0 (InputRegion, 1);
-  scroll_area->priv->current_input->region = cairo_region_copy (scroll_area->priv->update_region);
-  scroll_area->priv->current_input->paths = NULL;
-  g_ptr_array_add (scroll_area->priv->input_regions,
-                   scroll_area->priv->current_input);
+  scroll_area->current_input = g_new0 (InputRegion, 1);
+  scroll_area->current_input->region = cairo_region_copy (scroll_area->update_region);
+  scroll_area->current_input->paths = NULL;
+  g_ptr_array_add (scroll_area->input_regions,
+                   scroll_area->current_input);
 
-  region = scroll_area->priv->update_region;
-  scroll_area->priv->update_region = cairo_region_create ();
+  region = scroll_area->update_region;
+  scroll_area->update_region = cairo_region_create ();
 
   initialize_background (widget, cr);
 
   g_signal_emit (widget, signals[PAINT], 0, cr);
 
-  scroll_area->priv->current_input = NULL;
+  scroll_area->current_input = NULL;
 
   gtk_widget_get_allocation (widget, &widget_allocation);
 
   /* Finally draw the backing surface */
-  cairo_set_source_surface (cr, scroll_area->priv->surface,
+  cairo_set_source_surface (cr, scroll_area->surface,
                             widget_allocation.x, widget_allocation.y);
   cairo_fill (cr);
 
@@ -505,10 +504,10 @@ emit_viewport_changed (FooScrollArea *scroll_area,
   g_signal_emit (scroll_area, signals[VIEWPORT_CHANGED], 0,
                  new_viewport, old_viewport);
 
-  if (scroll_area->priv->input_window == NULL)
+  if (scroll_area->input_window == NULL)
     return;
 
-  gdk_window_get_device_position (scroll_area->priv->input_window,
+  gdk_window_get_device_position (scroll_area->input_window,
                                   gdk_device_manager_get_client_pointer (gdk_display_get_device_manager (gdk_display_get_default ())),
                                   &px, &py, NULL);
 
@@ -537,8 +536,8 @@ set_adjustment_values (FooScrollArea *scroll_area)
 {
   GtkAllocation allocation;
 
-  GtkAdjustment *hadj = scroll_area->priv->hadj;
-  GtkAdjustment *vadj = scroll_area->priv->vadj;
+  GtkAdjustment *hadj = scroll_area->hadj;
+  GtkAdjustment *vadj = scroll_area->vadj;
 
   /* Horizontal */
   gtk_widget_get_allocation (GTK_WIDGET (scroll_area), &allocation);
@@ -547,7 +546,7 @@ set_adjustment_values (FooScrollArea *scroll_area)
   gtk_adjustment_set_step_increment (hadj, 0.1 * allocation.width);
   gtk_adjustment_set_page_increment (hadj, 0.9 * allocation.width);
   gtk_adjustment_set_lower (hadj, 0.0);
-  gtk_adjustment_set_upper (hadj, scroll_area->priv->width);
+  gtk_adjustment_set_upper (hadj, scroll_area->width);
   g_object_thaw_notify (G_OBJECT (hadj));
 
   /* Vertical */
@@ -556,7 +555,7 @@ set_adjustment_values (FooScrollArea *scroll_area)
   gtk_adjustment_set_step_increment (vadj, 0.1 * allocation.height);
   gtk_adjustment_set_page_increment (vadj, 0.9 * allocation.height);
   gtk_adjustment_set_lower (vadj, 0.0);
-  gtk_adjustment_set_upper (vadj, scroll_area->priv->height);
+  gtk_adjustment_set_upper (vadj, scroll_area->height);
   g_object_thaw_notify (G_OBJECT (vadj));
 
   clamp_adjustment (hadj);
@@ -600,17 +599,17 @@ foo_scroll_area_realize (GtkWidget *widget)
   gtk_widget_set_window (widget, window);
   g_object_ref (window);
 
-  area->priv->input_window = gdk_window_new (window,
+  area->input_window = gdk_window_new (window,
                                              &attributes, attributes_mask);
 
   cr = gdk_cairo_create (gtk_widget_get_window (widget));
-  area->priv->surface = cairo_surface_create_similar (cairo_get_target (cr),
+  area->surface = cairo_surface_create_similar (cairo_get_target (cr),
                                                       CAIRO_CONTENT_COLOR,
                                                       widget_allocation.width,
                                                       widget_allocation.height);
   cairo_destroy (cr);
 
-  gdk_window_set_user_data (area->priv->input_window, area);
+  gdk_window_set_user_data (area->input_window, area);
 }
 
 static void
@@ -618,11 +617,11 @@ foo_scroll_area_unrealize (GtkWidget *widget)
 {
   FooScrollArea *area = FOO_SCROLL_AREA (widget);
 
-  if (area->priv->input_window)
+  if (area->input_window)
     {
-      gdk_window_set_user_data (area->priv->input_window, NULL);
-      gdk_window_destroy (area->priv->input_window);
-      area->priv->input_window = NULL;
+      gdk_window_set_user_data (area->input_window, NULL);
+      gdk_window_destroy (area->input_window);
+      area->input_window = NULL;
     }
 
   GTK_WIDGET_CLASS (parent_class)->unrealize (widget);
@@ -664,7 +663,7 @@ static void
 allocation_to_canvas_region (FooScrollArea  *area,
                              cairo_region_t *region)
 {
-  cairo_region_translate (region, area->priv->x_offset, area->priv->y_offset);
+  cairo_region_translate (region, area->x_offset, area->y_offset);
 }
 
 static void
@@ -713,18 +712,18 @@ foo_scroll_area_size_allocate (GtkWidget     *widget,
 
   gtk_widget_set_allocation (widget, allocation);
 
-  if (scroll_area->priv->input_window)
+  if (scroll_area->input_window)
     {
       cairo_surface_t *new_surface;
 
-      gdk_window_move_resize (scroll_area->priv->input_window,
+      gdk_window_move_resize (scroll_area->input_window,
                               allocation->x, allocation->y,
                               allocation->width, allocation->height);
 
-      new_surface = create_new_surface (widget, scroll_area->priv->surface);
-      cairo_surface_destroy (scroll_area->priv->surface);
+      new_surface = create_new_surface (widget, scroll_area->surface);
+      cairo_surface_destroy (scroll_area->surface);
 
-      scroll_area->priv->surface = new_surface;
+      scroll_area->surface = new_surface;
     }
 
   get_viewport (scroll_area, &new_viewport);
@@ -763,20 +762,20 @@ process_event (FooScrollArea           *scroll_area,
 
   allocation_to_canvas (scroll_area, &x, &y);
 
-  if (scroll_area->priv->grabbed)
+  if (scroll_area->grabbed)
     {
       emit_input (scroll_area, input_type, x, y,
-                  scroll_area->priv->grab_func,
-                  scroll_area->priv->grab_data);
+                  scroll_area->grab_func,
+                  scroll_area->grab_data);
     }
 
 #if 0
-  g_print ("number of input regions: %d\n", scroll_area->priv->input_regions->len);
+  g_print ("number of input regions: %d\n", scroll_area->input_regions->len);
 #endif
 
-  for (i = 0; i < scroll_area->priv->input_regions->len; ++i)
+  for (i = 0; i < scroll_area->input_regions->len; ++i)
     {
-      InputRegion *region = scroll_area->priv->input_regions->pdata[i];
+      InputRegion *region = scroll_area->input_regions->pdata[i];
 
 #if 0
       g_print ("region %d (looking for %d,%d) ", i, x, y);
@@ -806,7 +805,7 @@ process_event (FooScrollArea           *scroll_area,
 
               if (inside)
                 {
-                  if (scroll_area->priv->grabbed)
+                  if (scroll_area->grabbed)
                     {
                       emit_input (scroll_area, FOO_DRAG_HOVER,
                                   x, y,
@@ -895,17 +894,17 @@ foo_scroll_area_set_size_fixed_y (FooScrollArea        *scroll_area,
                                   int                   old_y,
                                   int                   new_y)
 {
-  scroll_area->priv->width = width;
-  scroll_area->priv->height = height;
+  scroll_area->width = width;
+  scroll_area->height = height;
 
 #if 0
   g_print ("diff: %d\n", new_y - old_y);
 #endif
-  g_object_thaw_notify (G_OBJECT (scroll_area->priv->vadj));
-  gtk_adjustment_set_value (scroll_area->priv->vadj, new_y);
+  g_object_thaw_notify (G_OBJECT (scroll_area->vadj));
+  gtk_adjustment_set_value (scroll_area->vadj, new_y);
 
   set_adjustment_values (scroll_area);
-  g_object_thaw_notify (G_OBJECT (scroll_area->priv->vadj));
+  g_object_thaw_notify (G_OBJECT (scroll_area->vadj));
 }
 
 void
@@ -930,8 +929,8 @@ foo_scroll_area_set_size (FooScrollArea        *scroll_area,
    * fixed points?
    */
 
-  scroll_area->priv->width = width;
-  scroll_area->priv->height = height;
+  scroll_area->width = width;
+  scroll_area->height = height;
 
   set_adjustment_values (scroll_area);
 }
@@ -944,10 +943,10 @@ foo_scroll_area_get_preferred_width (GtkWidget *widget,
   FooScrollArea *scroll_area = FOO_SCROLL_AREA (widget);
 
   if (minimum != NULL) {
-    *minimum = scroll_area->priv->min_width;
+    *minimum = scroll_area->min_width;
   }
   if (natural != NULL) {
-    *natural = scroll_area->priv->min_width;
+    *natural = scroll_area->min_width;
   }
 }
 
@@ -959,10 +958,10 @@ foo_scroll_area_get_preferred_height (GtkWidget *widget,
   FooScrollArea *scroll_area = FOO_SCROLL_AREA (widget);
 
   if (minimum != NULL) {
-    *minimum = scroll_area->priv->min_height;
+    *minimum = scroll_area->min_height;
   }
   if (natural != NULL) {
-    *natural = scroll_area->priv->min_height;
+    *natural = scroll_area->min_height;
   }
 }
 
@@ -997,7 +996,7 @@ foo_scroll_area_scroll (FooScrollArea *area,
                move_area.width, move_area.height,
                dx, dy);
 #endif
-      cr = cairo_create (area->priv->surface);
+      cr = cairo_create (area->surface);
 
       /* Cairo doesn't allow self-copies, so we do this little trick instead:
        * 1) Clip so the group size is small.
@@ -1007,7 +1006,7 @@ foo_scroll_area_scroll (FooScrollArea *area,
       cairo_clip (cr);
       cairo_push_group (cr);
 
-      cairo_set_source_surface (cr, area->priv->surface, dx, dy);
+      cairo_set_source_surface (cr, area->surface, dx, dy);
       gdk_cairo_rectangle (cr, &move_area);
       cairo_fill (cr);
 
@@ -1042,18 +1041,18 @@ foo_scrollbar_adjustment_changed (GtkAdjustment *adj,
 
   get_viewport (scroll_area, &old_viewport);
 
-  if (adj == scroll_area->priv->hadj)
+  if (adj == scroll_area->hadj)
     {
       /* FIXME: do we treat the offset as int or double, and,
        * if int, how do we round?
        */
-      dx = (int)gtk_adjustment_get_value (adj) - scroll_area->priv->x_offset;
-      scroll_area->priv->x_offset = gtk_adjustment_get_value (adj);
+      dx = (int)gtk_adjustment_get_value (adj) - scroll_area->x_offset;
+      scroll_area->x_offset = gtk_adjustment_get_value (adj);
     }
-  else if (adj == scroll_area->priv->vadj)
+  else if (adj == scroll_area->vadj)
     {
-      dy = (int)gtk_adjustment_get_value (adj) - scroll_area->priv->y_offset;
-      scroll_area->priv->y_offset = gtk_adjustment_get_value (adj);
+      dy = (int)gtk_adjustment_get_value (adj) - scroll_area->y_offset;
+      scroll_area->y_offset = gtk_adjustment_get_value (adj);
     }
   else
     {
@@ -1109,7 +1108,7 @@ static void
 foo_scroll_area_set_hadjustment (FooScrollArea *scroll_area,
                                  GtkAdjustment *hadjustment)
 {
-  set_one_adjustment (scroll_area, hadjustment, &scroll_area->priv->hadj);
+  set_one_adjustment (scroll_area, hadjustment, &scroll_area->hadj);
 
   set_adjustment_values (scroll_area);
 }
@@ -1118,7 +1117,7 @@ static void
 foo_scroll_area_set_vadjustment (FooScrollArea *scroll_area,
                                  GtkAdjustment *vadjustment)
 {
-  set_one_adjustment (scroll_area, vadjustment, &scroll_area->priv->vadj);
+  set_one_adjustment (scroll_area, vadjustment, &scroll_area->vadj);
 
   set_adjustment_values (scroll_area);
 }
@@ -1134,8 +1133,8 @@ foo_scroll_area_set_min_size (FooScrollArea *scroll_area,
                               int                  min_width,
                               int            min_height)
 {
-  scroll_area->priv->min_width = min_width;
-  scroll_area->priv->min_height = min_height;
+  scroll_area->min_width = min_width;
+  scroll_area->min_height = min_height;
 
   /* FIXME: think through invalidation.
    *
@@ -1161,8 +1160,8 @@ make_path (FooScrollArea *area,
   path->path = cairo_copy_path (cr);
   path->func = func;
   path->data = data;
-  path->next = area->priv->current_input->paths;
-  area->priv->current_input->paths = path;
+  path->next = area->current_input->paths;
+  area->current_input->paths = path;
   return path;
 }
 
@@ -1181,7 +1180,7 @@ foo_scroll_area_add_input_from_fill (FooScrollArea           *scroll_area,
 {
   g_return_if_fail (FOO_IS_SCROLL_AREA (scroll_area));
   g_return_if_fail (cr != NULL);
-  g_return_if_fail (scroll_area->priv->current_input);
+  g_return_if_fail (scroll_area->current_input);
 
   make_path (scroll_area, cr, FALSE, func, data);
 }
@@ -1194,7 +1193,7 @@ foo_scroll_area_add_input_from_stroke (FooScrollArea           *scroll_area,
 {
   g_return_if_fail (FOO_IS_SCROLL_AREA (scroll_area));
   g_return_if_fail (cr != NULL);
-  g_return_if_fail (scroll_area->priv->current_input);
+  g_return_if_fail (scroll_area->current_input);
 
   make_path (scroll_area, cr, TRUE, func, data);
 }
@@ -1207,7 +1206,7 @@ foo_scroll_area_invalidate (FooScrollArea *scroll_area)
 
   gtk_widget_get_allocation (widget, &allocation);
   foo_scroll_area_invalidate_rect (scroll_area,
-                                   scroll_area->priv->x_offset, scroll_area->priv->y_offset,
+                                   scroll_area->x_offset, scroll_area->y_offset,
                                    allocation.width,
                                    allocation.height);
 }
@@ -1221,8 +1220,8 @@ canvas_to_window (FooScrollArea  *area,
 
   gtk_widget_get_allocation (widget, &allocation);
   cairo_region_translate (region,
-                          -area->priv->x_offset + allocation.x,
-                          -area->priv->y_offset + allocation.y);
+                          -area->x_offset + allocation.x,
+                          -area->y_offset + allocation.y);
 }
 
 static void
@@ -1234,8 +1233,8 @@ window_to_canvas (FooScrollArea  *area,
 
   gtk_widget_get_allocation (widget, &allocation);
   cairo_region_translate (region,
-                          area->priv->x_offset - allocation.x,
-                          area->priv->y_offset - allocation.y);
+                          area->x_offset - allocation.x,
+                          area->y_offset - allocation.y);
 }
 
 void
@@ -1248,7 +1247,7 @@ foo_scroll_area_invalidate_region (FooScrollArea  *area,
 
   widget = GTK_WIDGET (area);
 
-  cairo_region_union (area->priv->update_region, region);
+  cairo_region_union (area->update_region, region);
 
   if (gtk_widget_get_realized (widget))
     {
@@ -1286,11 +1285,11 @@ foo_scroll_area_begin_grab (FooScrollArea *scroll_area,
                             gpointer       input_data)
 {
   g_return_if_fail (FOO_IS_SCROLL_AREA (scroll_area));
-  g_return_if_fail (!scroll_area->priv->grabbed);
+  g_return_if_fail (!scroll_area->grabbed);
 
-  scroll_area->priv->grabbed = TRUE;
-  scroll_area->priv->grab_func = func;
-  scroll_area->priv->grab_data = input_data;
+  scroll_area->grabbed = TRUE;
+  scroll_area->grab_func = func;
+  scroll_area->grab_data = input_data;
 
   /* FIXME: we should probably take a server grab */
   /* Also, maybe there should be support for setting the grab cursor */
@@ -1302,9 +1301,9 @@ foo_scroll_area_end_grab (FooScrollArea *scroll_area,
 {
   g_return_if_fail (FOO_IS_SCROLL_AREA (scroll_area));
 
-  scroll_area->priv->grabbed = FALSE;
-  scroll_area->priv->grab_func = NULL;
-  scroll_area->priv->grab_data = NULL;
+  scroll_area->grabbed = FALSE;
+  scroll_area->grab_func = NULL;
+  scroll_area->grab_data = NULL;
 
   if (event != NULL)
     process_event (scroll_area, FOO_DROP, event->x, event->y);
@@ -1313,7 +1312,7 @@ foo_scroll_area_end_grab (FooScrollArea *scroll_area,
 gboolean
 foo_scroll_area_is_grabbed (FooScrollArea *scroll_area)
 {
-  return scroll_area->priv->grabbed;
+  return scroll_area->grabbed;
 }
 
 void
@@ -1321,14 +1320,14 @@ foo_scroll_area_set_viewport_pos (FooScrollArea  *scroll_area,
                                   int             x,
                                   int             y)
 {
-  g_object_freeze_notify (G_OBJECT (scroll_area->priv->hadj));
-  g_object_freeze_notify (G_OBJECT (scroll_area->priv->vadj));
-  gtk_adjustment_set_value (scroll_area->priv->hadj, x);
-  gtk_adjustment_set_value (scroll_area->priv->vadj, y);
+  g_object_freeze_notify (G_OBJECT (scroll_area->hadj));
+  g_object_freeze_notify (G_OBJECT (scroll_area->vadj));
+  gtk_adjustment_set_value (scroll_area->hadj, x);
+  gtk_adjustment_set_value (scroll_area->vadj, y);
 
   set_adjustment_values (scroll_area);
-  g_object_thaw_notify (G_OBJECT (scroll_area->priv->hadj));
-  g_object_thaw_notify (G_OBJECT (scroll_area->priv->vadj));
+  g_object_thaw_notify (G_OBJECT (scroll_area->hadj));
+  g_object_thaw_notify (G_OBJECT (scroll_area->vadj));
 }
 
 static gboolean
@@ -1346,13 +1345,13 @@ stop_scrolling (FooScrollArea *area)
 #if 0
   g_print ("stop scrolling\n");
 #endif
-  if (area->priv->auto_scroll_info)
+  if (area->auto_scroll_info)
     {
-      g_source_remove (area->priv->auto_scroll_info->timeout_id);
-      g_timer_destroy (area->priv->auto_scroll_info->timer);
-      g_free (area->priv->auto_scroll_info);
+      g_source_remove (area->auto_scroll_info->timeout_id);
+      g_timer_destroy (area->auto_scroll_info->timer);
+      g_free (area->auto_scroll_info);
 
-      area->priv->auto_scroll_info = NULL;
+      area->auto_scroll_info = NULL;
     }
 }
 
@@ -1361,7 +1360,7 @@ scroll_idle (gpointer data)
 {
   GdkRectangle viewport, new_viewport;
   FooScrollArea *area = data;
-  AutoScrollInfo *info = area->priv->auto_scroll_info;
+  AutoScrollInfo *info = area->auto_scroll_info;
   int new_x, new_y;
   double elapsed;
 
@@ -1426,15 +1425,15 @@ ensure_scrolling (FooScrollArea *area,
                   int            dx,
                   int            dy)
 {
-  if (!area->priv->auto_scroll_info)
+  if (!area->auto_scroll_info)
     {
 #if 0
       g_print ("start scrolling\n");
 #endif
-      area->priv->auto_scroll_info = g_new0 (AutoScrollInfo, 1);
-      area->priv->auto_scroll_info->timeout_id =
+      area->auto_scroll_info = g_new0 (AutoScrollInfo, 1);
+      area->auto_scroll_info->timeout_id =
         g_idle_add (scroll_idle, area);
-      area->priv->auto_scroll_info->timer = g_timer_new ();
+      area->auto_scroll_info->timer = g_timer_new ();
     }
 
 #if 0
@@ -1445,8 +1444,8 @@ ensure_scrolling (FooScrollArea *area,
   g_print ("dx, dy: %d %d\n", dx, dy);
 #endif
 
-  area->priv->auto_scroll_info->dx = dx;
-  area->priv->auto_scroll_info->dy = dy;
+  area->auto_scroll_info->dx = dx;
+  area->auto_scroll_info->dy = dy;
 }
 
 void

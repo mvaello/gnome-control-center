@@ -26,16 +26,32 @@
 #include <arpa/inet.h>
 #include <glib-object.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 #include <NetworkManager.h>
 
 #include "shell/list-box-helper.h"
 #include "ce-page-ip4.h"
 #include "ui-helpers.h"
 
-#define RADIO_IS_ACTIVE(x) (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (gtk_builder_get_object(CE_PAGE (page)->builder, x))))
+#define RADIO_IS_ACTIVE(x) (gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (gtk_builder_get_object(ce_page_get_builder (CE_PAGE (page)), x))))
 
 static void ensure_empty_address_row (CEPageIP4 *page);
 static void ensure_empty_routes_row (CEPageIP4 *page);
+
+struct _CEPageIP4
+{
+        CEPage parent_instance;
+
+        NMSettingIPConfig *setting;
+
+        GtkToggleButton *disabled;
+        GtkWidget       *address_list;
+        GtkSwitch       *auto_dns;
+        GtkWidget       *dns_entry;
+        GtkSwitch       *auto_routes;
+        GtkWidget       *routes_list;
+        GtkWidget       *never_default;
+};
 
 G_DEFINE_TYPE (CEPageIP4, ce_page_ip4, CE_TYPE_PAGE)
 
@@ -70,7 +86,7 @@ method_changed (GtkToggleButton *radio, CEPageIP4 *page)
                 routes_enabled = !RADIO_IS_ACTIVE ("radio_local");
         }
 
-        widget = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "address_section"));
+        widget = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "address_section"));
         gtk_widget_set_visible (widget, addr_enabled);
         gtk_widget_set_sensitive (page->dns_entry, dns_enabled);
         gtk_widget_set_sensitive (page->routes_list, routes_enabled);
@@ -253,7 +269,7 @@ add_address_row (CEPageIP4   *page,
         gtk_container_add (GTK_CONTAINER (row_box), delete_button);
         g_object_set_data (G_OBJECT (row), "delete-button", delete_button);
 
-        group = GTK_SIZE_GROUP (gtk_builder_get_object (CE_PAGE (page)->builder, "address_sizegroup"));
+        group = GTK_SIZE_GROUP (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "address_sizegroup"));
         gtk_size_group_add_widget (group, delete_button);
 
         gtk_container_add (GTK_CONTAINER (row), row_box);
@@ -289,7 +305,7 @@ add_address_section (CEPageIP4 *page)
         GtkWidget *list;
         gint i;
 
-        widget = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "address_section"));
+        widget = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "address_section"));
 
         page->address_list = list = gtk_list_box_new ();
         gtk_list_box_set_selection_mode (GTK_LIST_BOX (list), GTK_SELECTION_NONE);
@@ -327,11 +343,11 @@ add_dns_section (CEPageIP4 *page)
         GString *string;
         gint i;
 
-        page->auto_dns = GTK_SWITCH (gtk_builder_get_object (CE_PAGE (page)->builder, "auto_dns_switch"));
+        page->auto_dns = GTK_SWITCH (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "auto_dns_switch"));
         gtk_switch_set_active (page->auto_dns, !nm_setting_ip_config_get_ignore_auto_dns (page->setting));
         g_signal_connect (page->auto_dns, "notify::active", G_CALLBACK (switch_toggled), page);
 
-        page->dns_entry = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "dns_entry"));
+        page->dns_entry = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "dns_entry"));
         entry = GTK_ENTRY (page->dns_entry);
         string = g_string_new ("");
 
@@ -412,7 +428,7 @@ add_route_row (CEPageIP4   *page,
         gtk_widget_set_hexpand (widget, TRUE);
         gtk_container_add (GTK_CONTAINER (row_box), widget);
 
-        group = GTK_SIZE_GROUP (gtk_builder_get_object (CE_PAGE (page)->builder, "routes_metric_sizegroup"));
+        group = GTK_SIZE_GROUP (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "routes_metric_sizegroup"));
         gtk_size_group_add_widget (group, widget);
 
         delete_button = gtk_button_new ();
@@ -426,7 +442,7 @@ add_route_row (CEPageIP4   *page,
         gtk_container_add (GTK_CONTAINER (row_box), delete_button);
         g_object_set_data (G_OBJECT (row), "delete-button", delete_button);
 
-        group = GTK_SIZE_GROUP (gtk_builder_get_object (CE_PAGE (page)->builder, "routes_sizegroup"));
+        group = GTK_SIZE_GROUP (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "routes_sizegroup"));
         gtk_size_group_add_widget (group, delete_button);
 
         gtk_container_add (GTK_CONTAINER (row), row_box);
@@ -461,14 +477,14 @@ add_routes_section (CEPageIP4 *page)
         GtkWidget *list;
         gint i;
 
-        widget = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "routes_section"));
+        widget = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "routes_section"));
 
         page->routes_list = list = gtk_list_box_new ();
         gtk_list_box_set_selection_mode (GTK_LIST_BOX (list), GTK_SELECTION_NONE);
         gtk_list_box_set_header_func (GTK_LIST_BOX (list), cc_list_box_update_header_func, NULL, NULL);
         gtk_list_box_set_sort_func (GTK_LIST_BOX (list), (GtkListBoxSortFunc)sort_first_last, NULL, NULL);
         gtk_container_add (GTK_CONTAINER (widget), list);
-        page->auto_routes = GTK_SWITCH (gtk_builder_get_object (CE_PAGE (page)->builder, "auto_routes_switch"));
+        page->auto_routes = GTK_SWITCH (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "auto_routes_switch"));
         gtk_switch_set_active (page->auto_routes, !nm_setting_ip_config_get_ignore_auto_routes (page->setting));
         g_signal_connect (page->auto_routes, "notify::active", G_CALLBACK (switch_toggled), page);
 
@@ -519,13 +535,13 @@ connect_ip4_page (CEPageIP4 *page)
         add_dns_section (page);
         add_routes_section (page);
 
-        page->disabled = GTK_TOGGLE_BUTTON (gtk_builder_get_object (CE_PAGE (page)->builder, "radio_disabled"));
+        page->disabled = GTK_TOGGLE_BUTTON (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "radio_disabled"));
 
         str_method = nm_setting_ip_config_get_method (page->setting);
         disabled = g_strcmp0 (str_method, NM_SETTING_IP4_CONFIG_METHOD_DISABLED) == 0;
         gtk_toggle_button_set_active (page->disabled, disabled);
         g_signal_connect_swapped (page->disabled, "notify::active", G_CALLBACK (ce_page_changed), page);
-        content = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "page_content"));
+        content = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "page_content"));
         g_object_bind_property (page->disabled, "active",
                                 content, "sensitive",
                                 G_BINDING_SYNC_CREATE | G_BINDING_INVERT_BOOLEAN);
@@ -541,15 +557,15 @@ connect_ip4_page (CEPageIP4 *page)
                 method = IP4_METHOD_DISABLED;
         }
 
-        page->never_default = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "never_default_check"));
+        page->never_default = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "never_default_check"));
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (page->never_default),
                                       nm_setting_ip_config_get_never_default (page->setting));
         g_signal_connect_swapped (page->never_default, "toggled", G_CALLBACK (ce_page_changed), page);
 
         /* Connect radio buttons */
-        radios[RADIO_AUTOMATIC] = GTK_TOGGLE_BUTTON (gtk_builder_get_object (CE_PAGE (page)->builder, "radio_automatic"));
-        radios[RADIO_LOCAL] = GTK_TOGGLE_BUTTON (gtk_builder_get_object (CE_PAGE (page)->builder, "radio_local"));
-        radios[RADIO_MANUAL] = GTK_TOGGLE_BUTTON (gtk_builder_get_object (CE_PAGE (page)->builder, "radio_manual"));
+        radios[RADIO_AUTOMATIC] = GTK_TOGGLE_BUTTON (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "radio_automatic"));
+        radios[RADIO_LOCAL] = GTK_TOGGLE_BUTTON (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "radio_local"));
+        radios[RADIO_MANUAL] = GTK_TOGGLE_BUTTON (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "radio_manual"));
         radios[RADIO_DISABLED] = page->disabled;
 
         for (i = RADIO_AUTOMATIC; i < RADIO_DISABLED; i++)

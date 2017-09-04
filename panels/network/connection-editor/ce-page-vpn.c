@@ -23,11 +23,26 @@
 
 #include <glib-object.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 
 #include <NetworkManager.h>
 
 #include "ce-page-vpn.h"
 #include "vpn-helpers.h"
+
+struct _CEPageVpn
+{
+        CEPage parent_instance;
+
+        NMSettingConnection *setting_connection;
+        NMSettingVpn *setting_vpn;
+
+        GtkEntry *name;
+        GtkBox   *box;
+
+        NMVpnEditorPlugin *plugin;
+        NMVpnEditor *editor;
+};
 
 G_DEFINE_TYPE (CEPageVpn, ce_page_vpn, CE_TYPE_PAGE)
 
@@ -76,7 +91,6 @@ vpn_gnome3ify_editor (GtkWidget *widget)
 static void
 load_vpn_plugin (CEPageVpn *page, NMConnection *connection)
 {
-	CEPage *parent = CE_PAGE (page);
         GtkWidget *ui_widget, *failure;
 
         page->editor = nm_vpn_editor_plugin_get_editor (page->plugin,
@@ -93,7 +107,7 @@ load_vpn_plugin (CEPageVpn *page, NMConnection *connection)
 	}
         vpn_gnome3ify_editor (ui_widget);
 
-        failure = GTK_WIDGET (gtk_builder_get_object (parent->builder, "failure_label"));
+        failure = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "failure_label"));
         gtk_widget_destroy (failure);
 
         gtk_box_pack_start (page->box, ui_widget, TRUE, TRUE, 0);
@@ -161,7 +175,7 @@ ce_page_vpn_class_init (CEPageVpnClass *class)
 static void
 finish_setup (CEPageVpn *page, gpointer unused, GError *error, gpointer user_data)
 {
-        NMConnection *connection = CE_PAGE (page)->connection;
+        NMConnection *connection = ce_page_get_connection (CE_PAGE (page));
         const char *vpn_type;
 
         page->setting_connection = nm_connection_get_setting_connection (connection);
@@ -187,12 +201,12 @@ ce_page_vpn_new (NMConnection     *connection,
 					 "/org/gnome/control-center/network/vpn-page.ui",
 					 _("Identity")));
 
-        page->name = GTK_ENTRY (gtk_builder_get_object (CE_PAGE (page)->builder, "entry_name"));
-        page->box = GTK_BOX (gtk_builder_get_object (CE_PAGE (page)->builder, "page"));
+        page->name = GTK_ENTRY (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "entry_name"));
+        page->box = GTK_BOX (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "page"));
 
         g_signal_connect (page, "initialized", G_CALLBACK (finish_setup), NULL);
 
-        CE_PAGE (page)->security_setting = NM_SETTING_VPN_SETTING_NAME;
+        ce_page_set_security_setting (CE_PAGE (page), NM_SETTING_VPN_SETTING_NAME);
 
         return CE_PAGE (page);
 }

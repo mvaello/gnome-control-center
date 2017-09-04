@@ -33,7 +33,8 @@ enum
   XKB_OPTION_N_COLUMNS
 };
 
-typedef struct _CcKeyboardOption CcKeyboardOption;
+#define CC_TYPE_KEYBOARD_OPTION (cc_keyboard_option_get_type ())
+G_DECLARE_FINAL_TYPE (CcKeyboardOption, cc_keyboard_option, CC, KEYBOARD_OPTION, GObject)
 
 GList *         cc_keyboard_option_get_all              (void);
 const gchar *   cc_keyboard_option_get_description      (CcKeyboardOption *self);

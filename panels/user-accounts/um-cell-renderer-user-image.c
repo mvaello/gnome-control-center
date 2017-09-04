@@ -23,12 +23,12 @@
 
 #include "um-utils.h"
 
-struct _UmCellRendererUserImagePrivate {
+struct _UmCellRendererUserImage {
+        GtkCellRendererPixbuf parent_instance;
+
         GtkWidget *parent;
         ActUser *user;
 };
-
-#define UM_CELL_RENDERER_USER_IMAGE_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), UM_TYPE_CELL_RENDERER_USER_IMAGE, UmCellRendererUserImagePrivate))
 
 enum {
         PROP_0,
@@ -36,7 +36,7 @@ enum {
         PROP_USER
 };
 
-G_DEFINE_TYPE_WITH_CODE (UmCellRendererUserImage, um_cell_renderer_user_image, GTK_TYPE_CELL_RENDERER_PIXBUF, G_ADD_PRIVATE (UmCellRendererUserImage));
+G_DEFINE_TYPE (UmCellRendererUserImage, um_cell_renderer_user_image, GTK_TYPE_CELL_RENDERER_PIXBUF)
 
 static void
 render_user_image (UmCellRendererUserImage *cell_renderer)
@@ -44,9 +44,9 @@ render_user_image (UmCellRendererUserImage *cell_renderer)
         cairo_surface_t *surface;
         gint scale;
 
-        if (cell_renderer->priv->user != NULL) {
-                scale = gtk_widget_get_scale_factor (cell_renderer->priv->parent);
-                surface = render_user_icon (cell_renderer->priv->user, UM_ICON_STYLE_FRAME | UM_ICON_STYLE_STATUS, 48, scale);
+        if (cell_renderer->user != NULL) {
+                scale = gtk_widget_get_scale_factor (cell_renderer->parent);
+                surface = render_user_icon (cell_renderer->user, UM_ICON_STYLE_FRAME | UM_ICON_STYLE_STATUS, 48, scale);
                 g_object_set (GTK_CELL_RENDERER_PIXBUF (cell_renderer), "surface", surface, NULL);
                 cairo_surface_destroy (surface);
         } else {
@@ -74,12 +74,12 @@ um_cell_renderer_user_image_set_property (GObject      *object,
 
         switch (prop_id) {
         case PROP_PARENT:
-                cell_renderer->priv->parent = g_value_dup_object (value);
-                g_signal_connect (cell_renderer->priv->parent, "notify::scale-factor", G_CALLBACK (on_scale_factor_changed), cell_renderer);
+                cell_renderer->parent = g_value_dup_object (value);
+                g_signal_connect (cell_renderer->parent, "notify::scale-factor", G_CALLBACK (on_scale_factor_changed), cell_renderer);
                 break;
         case PROP_USER:
-                g_clear_object (&cell_renderer->priv->user);
-                cell_renderer->priv->user = g_value_dup_object (value);
+                g_clear_object (&cell_renderer->user);
+                cell_renderer->user = g_value_dup_object (value);
                 render_user_image (cell_renderer);
                 break;
         default:
@@ -93,8 +93,8 @@ um_cell_renderer_user_image_finalize (GObject *object)
 {
         UmCellRendererUserImage *cell_renderer = UM_CELL_RENDERER_USER_IMAGE (object);
 
-        g_clear_object (&cell_renderer->priv->parent);
-        g_clear_object (&cell_renderer->priv->user);
+        g_clear_object (&cell_renderer->parent);
+        g_clear_object (&cell_renderer->user);
 
         G_OBJECT_CLASS (um_cell_renderer_user_image_parent_class)->finalize (object);
 }
@@ -127,7 +127,6 @@ um_cell_renderer_user_image_class_init (UmCellRendererUserImageClass *class)
 static void
 um_cell_renderer_user_image_init (UmCellRendererUserImage *cell_renderer)
 {
-        cell_renderer->priv = UM_CELL_RENDERER_USER_IMAGE_GET_PRIVATE (cell_renderer);
 }
 
 GtkCellRenderer *

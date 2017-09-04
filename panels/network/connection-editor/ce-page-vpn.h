@@ -26,41 +26,12 @@
 
 #include <NetworkManager.h>
 
-#include <gtk/gtk.h>
 #include "ce-page.h"
 
 G_BEGIN_DECLS
 
-#define CE_TYPE_PAGE_VPN          (ce_page_vpn_get_type ())
-#define CE_PAGE_VPN(o)            (G_TYPE_CHECK_INSTANCE_CAST ((o), CE_TYPE_PAGE_VPN, CEPageVpn))
-#define CE_PAGE_VPN_CLASS(k)      (G_TYPE_CHECK_CLASS_CAST((k), CE_TYPE_PAGE_VPN, CEPageVpnClass))
-#define CE_IS_PAGE_VPN(o)         (G_TYPE_CHECK_INSTANCE_TYPE ((o), CE_TYPE_PAGE_VPN))
-#define CE_IS_PAGE_VPN_CLASS(k)   (G_TYPE_CHECK_CLASS_TYPE ((k), CE_TYPE_PAGE_VPN))
-#define CE_PAGE_VPN_GET_CLASS(o)  (G_TYPE_INSTANCE_GET_CLASS ((o), CE_TYPE_PAGE_VPN, CEPageVpnClass))
-
-typedef struct _CEPageVpn          CEPageVpn;
-typedef struct _CEPageVpnClass     CEPageVpnClass;
-
-struct _CEPageVpn
-{
-        CEPage parent;
-
-        NMSettingConnection *setting_connection;
-        NMSettingVpn *setting_vpn;
-
-        GtkEntry *name;
-        GtkBox   *box;
-
-	NMVpnEditorPlugin *plugin;
-	NMVpnEditor *editor;
-};
-
-struct _CEPageVpnClass
-{
-        CEPageClass parent_class;
-};
-
-GType   ce_page_vpn_get_type (void);
+#define CE_TYPE_PAGE_VPN (ce_page_vpn_get_type ())
+G_DECLARE_FINAL_TYPE (CEPageVpn, ce_page_vpn, CE, PAGE_VPN, CEPage)
 
 CEPage *ce_page_vpn_new      (NMConnection     *connection,
 			      NMClient         *client);

@@ -47,6 +47,33 @@ enum {
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
+struct _NetConnectionEditor
+{
+        GObject           parent_instance;
+
+        GtkWidget        *parent_window;
+        NMClient         *client;
+        NMDevice         *device;
+
+        NMConnection     *connection;
+        NMConnection     *orig_connection;
+        gboolean          is_new_connection;
+        gboolean          is_changed;
+        NMAccessPoint    *ap;
+
+        GtkBuilder       *builder;
+        GtkWidget        *window;
+
+        GSList *initializing_pages;
+        GSList *pages;
+
+        guint                    permission_id;
+        NMClientPermissionResult can_modify;
+
+        gboolean          title_set;
+        gboolean          show_when_initialized;
+};
+
 G_DEFINE_TYPE (NetConnectionEditor, net_connection_editor, G_TYPE_OBJECT)
 
 static void page_changed (CEPage *page, gpointer user_data);
@@ -217,7 +244,7 @@ net_connection_editor_class_init (NetConnectionEditorClass *class)
         signals[DONE] = g_signal_new ("done",
                                       G_OBJECT_CLASS_TYPE (object_class),
                                       G_SIGNAL_RUN_FIRST,
-                                      G_STRUCT_OFFSET (NetConnectionEditorClass, done),
+                                      0,
                                       NULL, NULL,
                                       NULL,
                                       G_TYPE_NONE, 1, G_TYPE_BOOLEAN);

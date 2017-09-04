@@ -29,51 +29,9 @@
 
 G_BEGIN_DECLS
 
-#define NET_TYPE_CONNECTION_EDITOR         (net_connection_editor_get_type ())
-#define NET_CONNECTION_EDITOR(o)            (G_TYPE_CHECK_INSTANCE_CAST ((o), NET_TYPE_CONNECTION_EDITOR, NetConnectionEditor))
-#define NET_CONNECTION_EDITOR_CLASS(k)      (G_TYPE_CHECK_CLASS_CAST((k), NET_TYPE_CONNECTION_EDITOR, NetConnectionEditorClass))
-#define NET_IS_CONNECTION_EDITOR(o)         (G_TYPE_CHECK_INSTANCE_TYPE ((o), NET_TYPE_CONNECTION_EDITOR))
-#define NET_IS_CONNECTION_EDITOR_CLASS(k)   (G_TYPE_CHECK_CLASS_TYPE ((k), NET_TYPE_CONNECTION_EDITOR))
-#define NET_CONNECTION_EDITOR_GET_CLASS(o)  (G_TYPE_INSTANCE_GET_CLASS ((o), NET_TYPE_CONNECTION_EDITOR, NetConnectionEditorClass))
+#define NET_TYPE_CONNECTION_EDITOR (net_connection_editor_get_type ())
+G_DECLARE_FINAL_TYPE (NetConnectionEditor, net_connection_editor, NET, CONNECTION_EDITOR, GObject)
 
-typedef struct _NetConnectionEditor          NetConnectionEditor;
-typedef struct _NetConnectionEditorClass     NetConnectionEditorClass;
-
-struct _NetConnectionEditor
-{
-         GObject parent;
-
-        GtkWidget        *parent_window;
-        NMClient         *client;
-        NMDevice         *device;
-
-        NMConnection     *connection;
-        NMConnection     *orig_connection;
-        gboolean          is_new_connection;
-        gboolean          is_changed;
-        NMAccessPoint    *ap;
-
-        GtkBuilder       *builder;
-        GtkWidget        *window;
-
-        GSList *initializing_pages;
-        GSList *pages;
-
-        guint                    permission_id;
-        NMClientPermissionResult can_modify;
-
-        gboolean          title_set;
-        gboolean          show_when_initialized;
-};
-
-struct _NetConnectionEditorClass
-{
-        GObjectClass parent_class;
-
-        void (*done) (NetConnectionEditor *details, gboolean success);
-};
-
-GType                net_connection_editor_get_type (void);
 NetConnectionEditor *net_connection_editor_new      (GtkWindow        *parent_window,
                                                      NMConnection     *connection,
                                                      NMDevice         *device,

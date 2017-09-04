@@ -1043,7 +1043,7 @@ pp_printer_entry_class_init (PpPrinterEntryClass *klass)
     g_signal_new ("printer-changed",
                   G_TYPE_FROM_CLASS (klass),
                   G_SIGNAL_RUN_LAST,
-                  G_STRUCT_OFFSET (PpPrinterEntryClass, printer_changed),
+                  0,
                   NULL, NULL, NULL,
                   G_TYPE_NONE, 0);
 
@@ -1051,7 +1051,7 @@ pp_printer_entry_class_init (PpPrinterEntryClass *klass)
     g_signal_new ("printer-delete",
                   G_TYPE_FROM_CLASS (klass),
                   G_SIGNAL_RUN_LAST,
-                  G_STRUCT_OFFSET (PpPrinterEntryClass, printer_delete),
+                  0,
                   NULL, NULL, NULL,
                   G_TYPE_NONE, 0);
 }

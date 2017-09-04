@@ -23,11 +23,21 @@
 
 #include <glib-object.h>
 #include <glib/gi18n.h>
+#include <gtk/gtk.h>
 
 #include <NetworkManager.h>
 
 #include "../panel-common.h"
 #include "ce-page-details.h"
+
+struct _CEPageDetails
+{
+        CEPage parent_instance;
+
+        NMDevice *device;
+        NMAccessPoint *ap;
+        NetConnectionEditor *editor;
+};
 
 G_DEFINE_TYPE (CEPageDetails, ce_page_details, CE_TYPE_PAGE)
 
@@ -109,7 +119,7 @@ update_last_used (CEPageDetails *page, NMConnection *connection)
         else
                 last_used = g_strdup_printf (ngettext ("%i day ago", "%i days ago", days), days);
 out:
-        panel_set_device_widget_details (CE_PAGE (page)->builder, "last_used", last_used);
+        panel_set_device_widget_details (ce_page_get_builder (CE_PAGE (page)), "last_used", last_used);
         if (now != NULL)
                 g_date_time_unref (now);
         if (then != NULL)
@@ -123,7 +133,7 @@ all_user_changed (GtkToggleButton *b, CEPageDetails *page)
         gboolean all_users;
         NMSettingConnection *sc;
 
-        sc = nm_connection_get_setting_connection (CE_PAGE (page)->connection);
+        sc = nm_connection_get_setting_connection (ce_page_get_connection (CE_PAGE (page)));
         all_users = gtk_toggle_button_get_active (b);
 
         g_object_set (sc, "permissions", NULL, NULL);
@@ -163,7 +173,7 @@ connect_details_page (CEPageDetails *page)
 
                 ac = nm_device_get_active_connection (page->device);
                 p1 = ac ? nm_active_connection_get_uuid (ac) : NULL;
-                p2 = nm_connection_get_uuid (CE_PAGE (page)->connection);
+                p2 = nm_connection_get_uuid (ce_page_get_connection (CE_PAGE (page)));
                 if (g_strcmp0 (p1, p2) == 0) {
                         device_is_active = TRUE;
                         if (NM_IS_DEVICE_WIFI (page->device))
@@ -176,7 +186,7 @@ connect_details_page (CEPageDetails *page)
                 str = g_strdup_printf (_("%d Mb/s"), speed);
         else
                 str = NULL;
-        panel_set_device_widget_details (CE_PAGE (page)->builder, "speed", str);
+        panel_set_device_widget_details (ce_page_get_builder (CE_PAGE (page)), "speed", str);
         g_clear_pointer (&str, g_free);
 
         if (NM_IS_DEVICE_WIFI (page->device))
@@ -184,12 +194,12 @@ connect_details_page (CEPageDetails *page)
         else if (NM_IS_DEVICE_ETHERNET (page->device))
                 str = nm_device_ethernet_get_hw_address (NM_DEVICE_ETHERNET (page->device));
 
-        panel_set_device_widget_details (CE_PAGE (page)->builder, "mac", str);
+        panel_set_device_widget_details (ce_page_get_builder (CE_PAGE (page)), "mac", str);
 
         str = NULL;
         if (device_is_active && active_ap)
                 str = get_ap_security_string (active_ap);
-        panel_set_device_widget_details (CE_PAGE (page)->builder, "security", str);
+        panel_set_device_widget_details (ce_page_get_builder (CE_PAGE (page)), "security", str);
         g_clear_pointer (&str, g_free);
 
         strength = 0;
@@ -208,30 +218,30 @@ connect_details_page (CEPageDetails *page)
                 str = C_("Signal strength", "Good");
         else
                 str = C_("Signal strength", "Excellent");
-        panel_set_device_widget_details (CE_PAGE (page)->builder, "strength", str);
+        panel_set_device_widget_details (ce_page_get_builder (CE_PAGE (page)), "strength", str);
 
         /* set IP entries */
         if (device_is_active)
-                panel_set_device_widgets (CE_PAGE (page)->builder, page->device);
+                panel_set_device_widgets (ce_page_get_builder (CE_PAGE (page)), page->device);
         else
-                panel_unset_device_widgets (CE_PAGE (page)->builder);
+                panel_unset_device_widgets (ce_page_get_builder (CE_PAGE (page)));
 
-        if (!device_is_active && CE_PAGE (page)->connection)
-                update_last_used (page, CE_PAGE (page)->connection);
+        if (!device_is_active && ce_page_get_connection (CE_PAGE (page)))
+                update_last_used (page, ce_page_get_connection (CE_PAGE (page)));
         else
-                panel_set_device_widget_details (CE_PAGE (page)->builder, "last_used", NULL);
+                panel_set_device_widget_details (ce_page_get_builder (CE_PAGE (page)), "last_used", NULL);
 
         /* Auto connect check */
-        widget = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder,
+        widget = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)),
                                                      "auto_connect_check"));
-        sc = nm_connection_get_setting_connection (CE_PAGE (page)->connection);
+        sc = nm_connection_get_setting_connection (ce_page_get_connection (CE_PAGE (page)));
         g_object_bind_property (sc, "autoconnect",
                                 widget, "active",
                                 G_BINDING_BIDIRECTIONAL | G_BINDING_SYNC_CREATE);
         g_signal_connect_swapped (widget, "toggled", G_CALLBACK (ce_page_changed), page);
 
         /* All users check */
-        widget = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder,
+        widget = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)),
                                                      "all_user_check"));
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (widget),
                                       nm_setting_connection_get_num_permissions (sc) == 0);
@@ -240,7 +250,7 @@ connect_details_page (CEPageDetails *page)
         g_signal_connect_swapped (widget, "toggled", G_CALLBACK (ce_page_changed), page);
 
         /* Forget button */
-        widget = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "button_forget"));
+        widget = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "button_forget"));
         g_signal_connect (widget, "clicked", G_CALLBACK (forget_cb), page);
 
         type = nm_setting_connection_get_connection_type (sc);

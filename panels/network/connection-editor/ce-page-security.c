@@ -29,6 +29,16 @@
 #include "wireless-security.h"
 #include "ce-page-security.h"
 
+struct _CEPageSecurity
+{
+        CEPage parent_instance;
+
+        GtkComboBox *security_combo;
+        GtkWidget   *security_heading;
+        GtkSizeGroup *group;
+        gboolean     adhoc;
+};
+
 G_DEFINE_TYPE (CEPageSecurity, ce_page_security, CE_TYPE_PAGE)
 
 enum {
@@ -129,7 +139,7 @@ security_combo_changed (GtkComboBox *combo,
 
         wsec_size_group_clear (page->group);
 
-        vbox = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "vbox"));
+        vbox = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "vbox"));
         children = gtk_container_get_children (GTK_CONTAINER (vbox));
         for (l = children; l; l = l->next) {
                 gtk_container_remove (GTK_CONTAINER (vbox), GTK_WIDGET (l->data));
@@ -200,7 +210,7 @@ set_sensitive (GtkCellLayout *cell_layout,
 static void
 finish_setup (CEPageSecurity *page)
 {
-        NMConnection *connection = CE_PAGE (page)->connection;
+        NMConnection *connection = ce_page_get_connection (CE_PAGE (page));
         NMSettingWireless *sw;
         NMSettingWirelessSecurity *sws;
         gboolean is_adhoc = FALSE;
@@ -219,8 +229,8 @@ finish_setup (CEPageSecurity *page)
 
         page->group = gtk_size_group_new (GTK_SIZE_GROUP_HORIZONTAL);
 
-        page->security_heading = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "heading_sec"));
-        page->security_combo = combo = GTK_COMBO_BOX (gtk_builder_get_object (CE_PAGE (page)->builder, "combo_sec"));
+        page->security_heading = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "heading_sec"));
+        page->security_combo = combo = GTK_COMBO_BOX (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "combo_sec"));
 
         dev_caps =   NM_WIFI_DEVICE_CAP_CIPHER_WEP40
                    | NM_WIFI_DEVICE_CAP_CIPHER_WEP104
@@ -452,13 +462,13 @@ ce_page_security_new (NMConnection      *connection,
             default_type == NMU_SEC_LEAP ||
             default_type == NMU_SEC_WPA_PSK ||
             default_type == NMU_SEC_WPA2_PSK) {
-                CE_PAGE (page)->security_setting = NM_SETTING_WIRELESS_SECURITY_SETTING_NAME;
+                ce_page_set_security_setting (CE_PAGE (page), NM_SETTING_WIRELESS_SECURITY_SETTING_NAME);
         }
 
         if (default_type == NMU_SEC_DYNAMIC_WEP ||
             default_type == NMU_SEC_WPA_ENTERPRISE ||
             default_type == NMU_SEC_WPA2_ENTERPRISE) {
-                CE_PAGE (page)->security_setting = NM_SETTING_802_1X_SETTING_NAME;
+                ce_page_set_security_setting (CE_PAGE (page), NM_SETTING_802_1X_SETTING_NAME);
         }
 
         g_signal_connect (page, "initialized", G_CALLBACK (finish_setup), NULL);

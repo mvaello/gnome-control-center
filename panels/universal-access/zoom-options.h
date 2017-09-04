@@ -26,45 +26,8 @@
 
 G_BEGIN_DECLS
 
-typedef struct _ZoomOptions			ZoomOptions;
-typedef struct _ZoomOptionsClass	ZoomOptionsClass;
-typedef struct _ZoomOptionsPrivate	ZoomOptionsPrivate;
-
 #define ZOOM_TYPE_OPTIONS (zoom_options_get_type ())
-
-#define ZOOM_OPTIONS(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST ((obj), \
-  ZOOM_TYPE_OPTIONS, ZoomOptions))
-
-#define ZOOM_OPTIONS_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST ((klass), \
-  ZOOM_TYPE_OPTIONS, ZoomOptionsClass))
-
-#define ZOOM_IS_OPTIONS(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), \
-  ZOOM_TYPE_OPTIONS))
-
-#define ZOOM_IS_OPTIONS_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE ((klass), \
-  ZOOM_TYPE_OPTIONS))
-
-#define ZOOM_OPTIONS_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), \
-  ZOOM_TYPE_OPTIONS, ZoomOptionsClass))
-
-struct _ZoomOptionsClass
-{
-  GObjectClass parent_class;
-};
-
-struct _ZoomOptions
-{
-	GObject parent;
-
-	ZoomOptionsPrivate *priv;
-};
-
-GType zoom_options_get_type (void) G_GNUC_CONST;
+G_DECLARE_FINAL_TYPE (ZoomOptions, zoom_options, ZOOM, OPTIONS, GObject)
 
 ZoomOptions *zoom_options_new    (void);
 void zoom_options_set_parent (ZoomOptions *self,

@@ -32,6 +32,18 @@
 
 #include "ce-page.h"
 
+typedef struct
+{
+        gboolean initialized;
+        GtkBuilder *builder;
+        GtkWidget *page;
+        gchar *title;
+        const gchar *security_setting;
+
+        NMConnection *connection;
+        NMClient *client;
+        GCancellable *cancellable;
+} CEPagePrivate;
 
 G_DEFINE_ABSTRACT_TYPE (CEPage, ce_page, G_TYPE_OBJECT)
 
@@ -65,10 +77,11 @@ static void
 dispose (GObject *object)
 {
         CEPage *self = CE_PAGE (object);
+        CEPagePrivate *priv = ce_page_get_instance_private (self);
 
-        g_clear_object (&self->page);
-        g_clear_object (&self->builder);
-        g_clear_object (&self->connection);
+        g_clear_object (&priv->page);
+        g_clear_object (&priv->builder);
+        g_clear_object (&priv->connection);
 
         G_OBJECT_CLASS (ce_page_parent_class)->dispose (object);
 }
@@ -77,38 +90,81 @@ static void
 finalize (GObject *object)
 {
         CEPage *self = CE_PAGE (object);
+        CEPagePrivate *priv = ce_page_get_instance_private (self);
 
-        g_free (self->title);
-        if (self->cancellable) {
-                g_cancellable_cancel (self->cancellable);
-                g_object_unref (self->cancellable);
+        g_free (priv->title);
+        if (priv->cancellable) {
+                g_cancellable_cancel (priv->cancellable);
+                g_object_unref (priv->cancellable);
         }
 
         G_OBJECT_CLASS (ce_page_parent_class)->finalize (object);
 }
 
+GtkBuilder *
+ce_page_get_builder (CEPage *self)
+{
+        CEPagePrivate *priv;
+
+        g_return_val_if_fail (CE_IS_PAGE (self), NULL);
+
+        priv = ce_page_get_instance_private (self);
+        return priv->builder;
+}
+
+NMConnection *
+ce_page_get_connection (CEPage *self)
+{
+        CEPagePrivate *priv;
+
+        g_return_val_if_fail (CE_IS_PAGE (self), NULL);
+
+        priv = ce_page_get_instance_private (self);
+        return priv->connection;
+}
+
+NMClient *
+ce_page_get_client (CEPage *self)
+{
+        CEPagePrivate *priv;
+
+        g_return_val_if_fail (CE_IS_PAGE (self), NULL);
+
+        priv = ce_page_get_instance_private (self);
+        return priv->client;
+}
+
 GtkWidget *
 ce_page_get_page (CEPage *self)
 {
+        CEPagePrivate *priv;
+
         g_return_val_if_fail (CE_IS_PAGE (self), NULL);
 
-        return self->page;
+        priv = ce_page_get_instance_private (self);
+        return priv->page;
 }
 
 const char *
 ce_page_get_title (CEPage *self)
 {
+        CEPagePrivate *priv;
+
         g_return_val_if_fail (CE_IS_PAGE (self), NULL);
 
-        return self->title;
+        priv = ce_page_get_instance_private (self);
+        return priv->title;
 }
 
 gboolean
 ce_page_get_initialized (CEPage *self)
 {
+        CEPagePrivate *priv;
+
         g_return_val_if_fail (CE_IS_PAGE (self), FALSE);
 
-        return self->initialized;
+        priv = ce_page_get_instance_private (self);
+        return priv->initialized;
 }
 
 void
@@ -126,13 +182,14 @@ get_property (GObject    *object,
               GParamSpec *pspec)
 {
         CEPage *self = CE_PAGE (object);
+        CEPagePrivate *priv = ce_page_get_instance_private (self);
 
         switch (prop_id) {
         case PROP_CONNECTION:
-                g_value_set_object (value, self->connection);
+                g_value_set_object (value, priv->connection);
                 break;
         case PROP_INITIALIZED:
-                g_value_set_boolean (value, self->initialized);
+                g_value_set_boolean (value, priv->initialized);
                 break;
         default:
                 G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -147,12 +204,13 @@ set_property (GObject      *object,
               GParamSpec   *pspec)
 {
         CEPage *self = CE_PAGE (object);
+        CEPagePrivate *priv = ce_page_get_instance_private (self);
 
         switch (prop_id) {
         case PROP_CONNECTION:
-                if (self->connection)
-                        g_object_unref (self->connection);
-                self->connection = g_value_dup_object (value);
+                if (priv->connection)
+                        g_object_unref (priv->connection);
+                priv->connection = g_value_dup_object (value);
                 break;
         default:
                 G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -163,8 +221,9 @@ set_property (GObject      *object,
 static void
 ce_page_init (CEPage *self)
 {
-        self->builder = gtk_builder_new ();
-        self->cancellable = g_cancellable_new ();
+        CEPagePrivate *priv = ce_page_get_instance_private (self);
+        priv->builder = gtk_builder_new ();
+        priv->cancellable = g_cancellable_new ();
 }
 
 static void
@@ -222,29 +281,31 @@ ce_page_new (GType             type,
              const gchar      *title)
 {
         CEPage *page;
+        CEPagePrivate *priv;
         GError *error = NULL;
 
         page = CE_PAGE (g_object_new (type,
                                       "connection", connection,
                                       NULL));
-        page->title = g_strdup (title);
-        page->client = client;
+        priv = ce_page_get_instance_private (page);
+        priv->title = g_strdup (title);
+        priv->client = client;
 
         if (ui_resource) {
-                if (!gtk_builder_add_from_resource (page->builder, ui_resource, &error)) {
+                if (!gtk_builder_add_from_resource (priv->builder, ui_resource, &error)) {
                         g_warning ("Couldn't load builder file: %s", error->message);
                         g_error_free (error);
                         g_object_unref (page);
                         return NULL;
                 }
-                page->page = GTK_WIDGET (gtk_builder_get_object (page->builder, "page"));
-                if (!page->page) {
+                priv->page = GTK_WIDGET (gtk_builder_get_object (priv->builder, "page"));
+                if (!priv->page) {
                         g_warning ("Couldn't load page widget from %s", ui_resource);
                         g_object_unref (page);
                         return NULL;
                 }
 
-                g_object_ref_sink (page->page);
+                g_object_ref_sink (priv->page);
         }
 
         return page;
@@ -254,7 +315,8 @@ static void
 emit_initialized (CEPage *page,
                   GError *error)
 {
-        page->initialized = TRUE;
+        CEPagePrivate *priv = ce_page_get_instance_private (page);
+        priv->initialized = TRUE;
         g_signal_emit (page, signals[INITIALIZED], 0, error);
         g_clear_error (&error);
 }
@@ -265,6 +327,7 @@ ce_page_complete_init (CEPage      *page,
                        GVariant    *secrets,
                        GError      *error)
 {
+	CEPagePrivate *priv = ce_page_get_instance_private (page);
 	GError *update_error = NULL;
 	GVariant *setting_dict;
 	gboolean ignore_error = FALSE;
@@ -299,7 +362,7 @@ ce_page_complete_init (CEPage      *page,
 	g_variant_unref (setting_dict);
 
 	/* Update the connection with the new secrets */
-	if (nm_connection_update_secrets (page->connection,
+	if (nm_connection_update_secrets (priv->connection,
 	                                  setting_name,
 	                                  secrets,
 	                                  &update_error)) {
@@ -434,7 +497,23 @@ ce_page_address_is_valid (const gchar *addr)
 const gchar *
 ce_page_get_security_setting (CEPage *page)
 {
-        return page->security_setting;
+        CEPagePrivate *priv;
+
+        g_return_val_if_fail (CE_IS_PAGE (page), NULL);
+
+        priv = ce_page_get_instance_private (page);
+        return priv->security_setting;
+}
+
+void
+ce_page_set_security_setting (CEPage *page, const gchar *security_setting)
+{
+        CEPagePrivate *priv;
+
+        g_return_if_fail (CE_IS_PAGE (page));
+
+        priv = ce_page_get_instance_private (page);
+        priv->security_setting = g_strdup (security_setting);
 }
 
 gint

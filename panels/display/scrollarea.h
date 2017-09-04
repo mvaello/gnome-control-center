@@ -13,20 +13,17 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+
+#ifndef _SCROLLAREA_H
+#define _SCROLLAREA_H
+
 #include <cairo.h>
 #include <gtk/gtk.h>
 
-#define FOO_TYPE_SCROLL_AREA            (foo_scroll_area_get_type ())
-#define FOO_SCROLL_AREA(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), FOO_TYPE_SCROLL_AREA, FooScrollArea))
-#define FOO_SCROLL_AREA_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  FOO_TYPE_SCROLL_AREA, FooScrollAreaClass))
-#define FOO_IS_SCROLL_AREA(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), FOO_TYPE_SCROLL_AREA))
-#define FOO_IS_SCROLL_AREA_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass),  FOO_TYPE_SCROLL_AREA))
-#define FOO_SCROLL_AREA_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),  FOO_TYPE_SCROLL_AREA, FooScrollAreaClass))
+G_BEGIN_DECLS
 
-typedef struct FooScrollArea FooScrollArea;
-typedef struct FooScrollAreaClass FooScrollAreaClass;
-typedef struct FooScrollAreaPrivate FooScrollAreaPrivate;
-typedef struct FooScrollAreaEvent FooScrollAreaEvent;
+#define FOO_TYPE_SCROLL_AREA (foo_scroll_area_get_type ())
+G_DECLARE_FINAL_TYPE (FooScrollArea, foo_scroll_area, FOO, SCROLL_AREA, GtkContainer)
 
 typedef enum
   {
@@ -37,43 +34,16 @@ typedef enum
     FOO_MOTION
   } FooScrollAreaEventType;
 
-struct FooScrollAreaEvent
+typedef struct
 {
   FooScrollAreaEventType      type;
   int                         x;
   int                         y;
-};
+} FooScrollAreaEvent;
 
 typedef void (* FooScrollAreaEventFunc) (FooScrollArea      *area,
                                          FooScrollAreaEvent *event,
                                          gpointer            data);
-
-struct FooScrollArea
-{
-  GtkContainer parent_instance;
-
-  FooScrollAreaPrivate *priv;
-};
-
-struct FooScrollAreaClass
-{
-  GtkContainerClass parent_class;
-
-  void (*set_scroll_adjustments) (FooScrollArea *scroll_area,
-                                  GtkAdjustment *hadjustment,
-                                  GtkAdjustment *vadjustment);
-
-  void (*viewport_changed) (FooScrollArea *scroll_area,
-                            GdkRectangle  *old_viewport,
-                            GdkRectangle  *new_viewport);
-
-  void (*paint) (FooScrollArea  *scroll_area,
-                 cairo_t        *cr,
-                 GdkRectangle   *extents,
-                 cairo_region_t *region);
-};
-
-GType foo_scroll_area_get_type (void);
 
 FooScrollArea *foo_scroll_area_new (void);
 
@@ -123,3 +93,7 @@ void foo_scroll_area_begin_auto_scroll (FooScrollArea *scroll_area);
 void foo_scroll_area_auto_scroll (FooScrollArea *scroll_area,
                                   FooScrollAreaEvent *event);
 void foo_scroll_area_end_auto_scroll (FooScrollArea *scroll_area);
+
+G_END_DECLS
+
+#endif /* _SCROLLAREA_H */

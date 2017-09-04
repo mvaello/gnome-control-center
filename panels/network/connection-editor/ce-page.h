@@ -30,30 +30,8 @@
 
 G_BEGIN_DECLS
 
-#define CE_TYPE_PAGE          (ce_page_get_type ())
-#define CE_PAGE(o)            (G_TYPE_CHECK_INSTANCE_CAST ((o), CE_TYPE_PAGE, CEPage))
-#define CE_PAGE_CLASS(k)      (G_TYPE_CHECK_CLASS_CAST((k), CE_TYPE_PAGE, CEPageClass))
-#define CE_IS_PAGE(o)         (G_TYPE_CHECK_INSTANCE_TYPE ((o), CE_TYPE_PAGE))
-#define CE_IS_PAGE_CLASS(k)   (G_TYPE_CHECK_CLASS_TYPE ((k), CE_TYPE_PAGE))
-#define CE_PAGE_GET_CLASS(o)  (G_TYPE_INSTANCE_GET_CLASS ((o), CE_TYPE_PAGE, CEPageClass))
-
-typedef struct _CEPage          CEPage;
-typedef struct _CEPageClass     CEPageClass;
-
-struct _CEPage
-{
-        GObject parent;
-
-        gboolean initialized;
-        GtkBuilder *builder;
-        GtkWidget *page;
-        gchar *title;
-        const gchar *security_setting;
-
-        NMConnection *connection;
-        NMClient *client;
-        GCancellable *cancellable;
-};
+#define CE_TYPE_PAGE (ce_page_get_type ())
+G_DECLARE_DERIVABLE_TYPE (CEPage, ce_page, CE, PAGE, GObject)
 
 struct _CEPageClass
 {
@@ -64,10 +42,13 @@ struct _CEPageClass
         void (*initialized) (CEPage *page, GError *error);
 };
 
-GType        ce_page_get_type        (void);
-
+GtkBuilder  *ce_page_get_builder     (CEPage           *page);
+NMConnection *ce_page_get_connection (CEPage           *page);
+NMClient    *ce_page_get_client      (CEPage           *page);
 GtkWidget   *ce_page_get_page        (CEPage           *page);
 const gchar *ce_page_get_title       (CEPage           *page);
+void         ce_page_set_security_setting (CEPage           *page,
+                                           const gchar      *security_setting);
 const gchar *ce_page_get_security_setting (CEPage           *page);
 gboolean     ce_page_validate        (CEPage           *page,
                                       NMConnection     *connection,

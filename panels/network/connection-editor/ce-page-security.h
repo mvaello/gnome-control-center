@@ -29,32 +29,8 @@
 
 G_BEGIN_DECLS
 
-#define CE_TYPE_PAGE_SECURITY          (ce_page_security_get_type ())
-#define CE_PAGE_SECURITY(o)            (G_TYPE_CHECK_INSTANCE_CAST ((o), CE_TYPE_PAGE_SECURITY, CEPageSecurity))
-#define CE_PAGE_SECURITY_CLASS(k)      (G_TYPE_CHECK_CLASS_CAST((k), CE_TYPE_PAGE_SECURITY, CEPageSecurityClass))
-#define CE_IS_PAGE_SECURITY(o)         (G_TYPE_CHECK_INSTANCE_TYPE ((o), CE_TYPE_PAGE_SECURITY))
-#define CE_IS_PAGE_SECURITY_CLASS(k)   (G_TYPE_CHECK_CLASS_TYPE ((k), CE_TYPE_PAGE_SECURITY))
-#define CE_PAGE_SECURITY_GET_CLASS(o)  (G_TYPE_INSTANCE_GET_CLASS ((o), CE_TYPE_PAGE_SECURITY, CEPageSecurityClass))
-
-typedef struct _CEPageSecurity          CEPageSecurity;
-typedef struct _CEPageSecurityClass     CEPageSecurityClass;
-
-struct _CEPageSecurity
-{
-        CEPage parent;
-
-        GtkComboBox *security_combo;
-        GtkWidget   *security_heading;
-        GtkSizeGroup *group;
-        gboolean     adhoc;
-};
-
-struct _CEPageSecurityClass
-{
-        CEPageClass parent_class;
-};
-
-GType   ce_page_security_get_type (void);
+#define CE_TYPE_PAGE_SECURITY (ce_page_security_get_type ())
+G_DECLARE_FINAL_TYPE (CEPageSecurity, ce_page_security, CE, PAGE_SECURITY, CEPage)
 
 CEPage *ce_page_security_new      (NMConnection     *connection,
                                    NMClient         *client);

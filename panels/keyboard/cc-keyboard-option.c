@@ -27,13 +27,6 @@
 
 #include "cc-keyboard-option.h"
 
-#define CC_TYPE_KEYBOARD_OPTION            (cc_keyboard_option_get_type ())
-#define CC_KEYBOARD_OPTION(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), CC_TYPE_KEYBOARD_OPTION, CcKeyboardOption))
-#define CC_KEYBOARD_OPTION_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass),  CC_TYPE_KEYBOARD_OPTION, CcKeyboardOptionClass))
-#define CC_IS_KEYBOARD_OPTION(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CC_TYPE_KEYBOARD_OPTION))
-#define CC_IS_KEYBOARD_OPTION_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass),  CC_TYPE_KEYBOARD_OPTION))
-#define CC_KEYBOARD_OPTION_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj),  CC_TYPE_KEYBOARD_OPTION, CcKeyboardOptionClass))
-
 #define INPUT_SOURCES_SCHEMA "org.gnome.desktop.input-sources"
 #define XKB_OPTIONS_KEY "xkb-options"
 
@@ -56,8 +49,6 @@ enum
 
 struct _CcKeyboardOption
 {
-  GObject parent_object;
-
   gchar *group;
   gchar *description;
   gchar *current_value;
@@ -66,11 +57,7 @@ struct _CcKeyboardOption
   const gchar * const *whitelist;
 };
 
-typedef struct _CcKeyboardOptionClass CcKeyboardOptionClass;
-struct _CcKeyboardOptionClass
-{
-  GObjectClass parent_class;
-};
+G_DEFINE_TYPE (CcKeyboardOption, cc_keyboard_option, G_TYPE_OBJECT);
 
 static guint keyboard_option_signals[LAST_SIGNAL] = { 0 };
 
@@ -130,10 +117,6 @@ static const gchar *xkb_option_grp_whitelist[] = {
 };
 
 static GList *objects_list = NULL;
-
-GType cc_keyboard_option_get_type (void);
-
-G_DEFINE_TYPE (CcKeyboardOption, cc_keyboard_option, G_TYPE_OBJECT);
 
 static gboolean
 strv_contains (const gchar * const *strv,

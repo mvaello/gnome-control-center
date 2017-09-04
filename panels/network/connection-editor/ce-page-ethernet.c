@@ -24,12 +24,26 @@
 #include <glib-object.h>
 #include <glib/gi18n.h>
 #include <net/if_arp.h>
+#include <gtk/gtk.h>
 
 #include <NetworkManager.h>
 
-
 #include "ce-page-ethernet.h"
 #include "ui-helpers.h"
+
+struct _CEPageEthernet
+{
+        CEPage parent_instance;
+
+        NMSettingConnection *setting_connection;
+        NMSettingWired *setting_wired;
+
+        GtkEntry        *name;
+        GtkComboBoxText *device_mac;
+        GtkEntry        *cloned_mac;
+        GtkSpinButton   *mtu;
+        GtkWidget       *mtu_label;
+};
 
 G_DEFINE_TYPE (CEPageEthernet, ce_page_ethernet, CE_TYPE_PAGE)
 
@@ -56,7 +70,7 @@ connect_ethernet_page (CEPageEthernet *page)
         gtk_entry_set_text (page->name, name);
 
         /* Device MAC address */
-        mac_list = ce_page_get_mac_list (CE_PAGE (page)->client, NM_TYPE_DEVICE_ETHERNET,
+        mac_list = ce_page_get_mac_list (ce_page_get_client (CE_PAGE (page)), NM_TYPE_DEVICE_ETHERNET,
                                          NM_DEVICE_ETHERNET_PERMANENT_HW_ADDRESS);
         s_mac_str = nm_setting_wired_get_mac_address (setting);
         ce_page_setup_mac_combo (page->device_mac, s_mac_str, mac_list);
@@ -172,11 +186,11 @@ ce_page_ethernet_new (NMConnection     *connection,
                                               "/org/gnome/control-center/network/ethernet-page.ui",
                                               _("Identity")));
 
-        page->name = GTK_ENTRY (gtk_builder_get_object (CE_PAGE (page)->builder, "entry_name"));
-        page->device_mac = GTK_COMBO_BOX_TEXT (gtk_builder_get_object (CE_PAGE (page)->builder, "combo_mac"));
-        page->cloned_mac = GTK_ENTRY (gtk_builder_get_object (CE_PAGE (page)->builder, "entry_cloned_mac"));
-        page->mtu = GTK_SPIN_BUTTON (gtk_builder_get_object (CE_PAGE (page)->builder, "spin_mtu"));
-        page->mtu_label = GTK_WIDGET (gtk_builder_get_object (CE_PAGE (page)->builder, "label_mtu"));
+        page->name = GTK_ENTRY (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "entry_name"));
+        page->device_mac = GTK_COMBO_BOX_TEXT (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "combo_mac"));
+        page->cloned_mac = GTK_ENTRY (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "entry_cloned_mac"));
+        page->mtu = GTK_SPIN_BUTTON (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "spin_mtu"));
+        page->mtu_label = GTK_WIDGET (gtk_builder_get_object (ce_page_get_builder (CE_PAGE (page)), "label_mtu"));
 
         page->setting_connection = nm_connection_get_setting_connection (connection);
         page->setting_wired = nm_connection_get_setting_wired (connection);

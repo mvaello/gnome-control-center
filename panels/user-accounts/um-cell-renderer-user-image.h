@@ -23,29 +23,9 @@
 
 G_BEGIN_DECLS
 
-#define UM_TYPE_CELL_RENDERER_USER_IMAGE um_cell_renderer_user_image_get_type()
+#define UM_TYPE_CELL_RENDERER_USER_IMAGE (um_cell_renderer_user_image_get_type ())
+G_DECLARE_FINAL_TYPE (UmCellRendererUserImage, um_cell_renderer_user_image, UM, CELL_RENDERER_USER_IMAGE, GtkCellRendererPixbuf)
 
-#define UM_CELL_RENDERER_USER_IMAGE(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), UM_TYPE_CELL_RENDERER_USER_IMAGE, UmCellRendererUserImage))
-#define UM_CELL_RENDERER_USER_IMAGE_CLASS(klass) (G_TYPE_CHECK_CLASS_CAST ((klass), UM_TYPE_CELL_RENDERER_USER_IMAGE, UmCellRendererUserImageClass))
-#define UM_IS_CELL_RENDERER_USER_IMAGE(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), UM_TYPE_CELL_RENDERER_USER_IMAGE))
-#define UM_IS_CELL_RENDERER_USER_IMAGE_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), UM_TYPE_CELL_RENDERER_USER_IMAGE))
-#define UM_CELL_RENDERER_USER_IMAGE_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), UM_TYPE_CELL_RENDERER_USER_IMAGE, UmCellRendererUserImageClass))
-
-typedef struct _UmCellRendererUserImage UmCellRendererUserImage;
-typedef struct _UmCellRendererUserImageClass UmCellRendererUserImageClass;
-typedef struct _UmCellRendererUserImagePrivate UmCellRendererUserImagePrivate;
-
-struct _UmCellRendererUserImage {
-        GtkCellRendererPixbuf parent;
-
-        UmCellRendererUserImagePrivate *priv;
-};
-
-struct _UmCellRendererUserImageClass {
-        GtkCellRendererPixbufClass parent_class;
-};
-
-GType            um_cell_renderer_user_image_get_type (void) G_GNUC_CONST;
 GtkCellRenderer *um_cell_renderer_user_image_new      (GtkWidget *parent);
 
 G_END_DECLS

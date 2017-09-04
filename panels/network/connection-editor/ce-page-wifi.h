@@ -29,29 +29,8 @@
 
 G_BEGIN_DECLS
 
-#define CE_TYPE_PAGE_WIFI          (ce_page_wifi_get_type ())
-#define CE_PAGE_WIFI(o)            (G_TYPE_CHECK_INSTANCE_CAST ((o), CE_TYPE_PAGE_WIFI, CEPageWifi))
-#define CE_PAGE_WIFI_CLASS(k)      (G_TYPE_CHECK_CLASS_CAST((k), CE_TYPE_PAGE_WIFI, CEPageWifiClass))
-#define CE_IS_PAGE_WIFI(o)         (G_TYPE_CHECK_INSTANCE_TYPE ((o), CE_TYPE_PAGE_WIFI))
-#define CE_IS_PAGE_WIFI_CLASS(k)   (G_TYPE_CHECK_CLASS_TYPE ((k), CE_TYPE_PAGE_WIFI))
-#define CE_PAGE_WIFI_GET_CLASS(o)  (G_TYPE_INSTANCE_GET_CLASS ((o), CE_TYPE_PAGE_WIFI, CEPageWifiClass))
-
-typedef struct _CEPageWifi          CEPageWifi;
-typedef struct _CEPageWifiClass     CEPageWifiClass;
-
-struct _CEPageWifi
-{
-        CEPage parent;
-
-        NMSettingWireless *setting;
-};
-
-struct _CEPageWifiClass
-{
-        CEPageClass parent_class;
-};
-
-GType   ce_page_wifi_get_type (void);
+#define CE_TYPE_PAGE_WIFI (ce_page_wifi_get_type ())
+G_DECLARE_FINAL_TYPE (CEPageWifi, ce_page_wifi, CE, PAGE_WIFI, CEPage)
 
 CEPage *ce_page_wifi_new      (NMConnection     *connection,
                                NMClient         *client);
